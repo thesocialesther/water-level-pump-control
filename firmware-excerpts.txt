@@ -1,0 +1,29 @@
+// Excerpts from the original report; not a complete compilable firmware file.
+
+// Configures PORTA as input, PORTB/C/D as outputs, and AN0 as 10-bit analog channel
+ADCON1 = 0x8E; // AN0 analog; AN1-AN7 digital; Vref = Vdd/Vss; right-justified result
+TRISA  = 0x01;  // RA0 input (sensor wiper), remaining RA pins output/unused
+TRISB  = 0x00;   // PORTB output: status LEDs (D2, D3)
+TRISC  = 0x00;   // PORTC output: relay driver line (RC0)
+TRISD  = 0x00;   // PORTD output: LCD control and data lines
+
+// Samples AN0 channel (0-1023) and scales directly to 0-100%
+unsigned int  adc_val;
+unsigned char level_pct;
+ 
+adc_val   = ADC_Read(0);                 // 10-bit conversion result, channel AN0
+level_pct = (adc_val * 100UL) / 1023;    // linear scaling to 0-100 percent
+
+// Low limit trigger (<= 20%): Activates Relay and Red LED
+if (level_pct <= 20) {
+    PUMP_RELAY = 1;   // energize relay coil -> pump ON
+    LED_LOW    = 1;   // red LED ON  (low-level / pump-running)
+    LED_FULL   = 0;   // green LED OFF
+}
+// High limit trigger (>= 90%): Cuts Relay power and illuminates Green LED
+else if (level_pct >= 90) {
+    PUMP_RELAY = 0;   // de-energize relay coil -> pump OFF
+    LED_LOW    = 0;   // red LED OFF
+    LED_FULL   = 1;   // green LED ON (tank-full / pump-off)
+}
+// Intermediate band (21-89%): relay and LEDs retain their previous state
